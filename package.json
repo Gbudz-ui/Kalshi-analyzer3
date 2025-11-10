@@ -1,0 +1,17 @@
+{
+  "name": "kalshi-analyzer",
+  "version": "1.0.0",
+  "description": "AI-Powered Kalshi Prediction Market Analyzer",
+  "scripts": {
+    "build": "echo 'No build needed'"
+  },
+  "keywords": [
+    "kalshi",
+    "prediction-markets",
+    "ai",
+    "claude",
+    "analysis"
+  ],
+  "author": "",
+  "license": "MIT"
+}
