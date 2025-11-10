@@ -1,0 +1,42 @@
+[build]
+  command = "echo 'No build needed'"
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."analyze"]
+  timeout = 300
+  memory = 1024
+
+[functions."get-results"]
+  timeout = 30
+  memory = 512
+
+# Optional: Scheduled function (requires Netlify Pro)
+# [[functions."analyze".schedule]]
+#   cron = "0 */6 * * *"  # Every 6 hours
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
