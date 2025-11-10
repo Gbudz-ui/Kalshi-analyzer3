@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalshi Event Analyzer - Live Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            padding: 30px 40px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.3s;
+            font-weight: 600;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .input-group label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .input-group input, .input-group select {
+            padding: 8px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        
+        .loading {
+            padding: 60px 40px;
+            text-align: center;
+            background: white;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 40px;
+            background: #f8f9fa;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .chart-container {
+            padding: 40px;
+            background: white;
+        }
+        
+        .chart-wrapper {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .opportunities-section {
+            padding: 40px;
+            background: white;
+        }
+        
+        .opportunities-section h2 {
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #667eea;
+        }
+        
+        .opportunity-card {
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .opportunity-card:hover {
+            transform: translateX(10px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .opportunity-card.strong-buy {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .opportunity-card.buy {
+            border-left-color: #22c55e;
+            background: #f0fdf4;
+        }
+        
+        .opportunity-card.sell, .opportunity-card.strong-sell {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        
+        .opportunity-card h3 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .ticker {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .metric-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .recommendation {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        
+        .recommendation.strong-buy {
+            background: #10b981;
+            color: white;
+        }
+        
+        .recommendation.buy {
+            background: #22c55e;
+            color: white;
+        }
+        
+        .recommendation.sell, .recommendation.strong-sell {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .recommendation.hold {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .reasoning {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #555;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .badge.high {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge.medium {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .badge.low {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .error {
+            padding: 40px;
+            text-align: center;
+            background: #fef2f2;
+            color: #dc2626;
+            border-radius: 15px;
+            margin: 20px;
+        }
+        
+        .timestamp {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Kalshi Event Analyzer</h1>
+            <p>AI-Powered Prediction Market Analysis - Live Dashboard</p>
+        </header>
+        
+        <div class="controls">
+            <button id="runAnalysisBtn" onclick="runAnalysis()">
+                🔍 Run New Analysis
+            </button>
+            <button onclick="loadLatestResults()">
+                📊 Load Latest Results
+            </button>
+            
+            <div class="input-group">
+                <label for="maxEvents">Max Events:</label>
+                <select id="maxEvents">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="15">15</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label for="minEdge">Min Edge:</label>
+                <select id="minEdge">
+                    <option value="0">0%</option>
+                    <option value="0.05" selected>5%</option>
+                    <option value="0.10">10%</option>
+                    <option value="0.15">15%</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="loadingSection" style="display: none;">
+            <div class="loading">
+                <div class="spinner"></div>
+                <h3>Analyzing Kalshi Markets...</h3>
+                <p>This may take 1-3 minutes. Please wait.</p>
+            </div>
+        </div>
+        
+        <div id="errorSection" style="display: none;">
+            <div class="error">
+                <h3>⚠️ Error</h3>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+        
+        <div id="dashboard" style="display: none;">
+            <div class="timestamp">
+                Last updated: <span id="timestamp">-</span>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Events</h3>
+                    <div class="value" id="totalEvents">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Opportunities Found</h3>
+                    <div class="value" id="totalOpps">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Strong Recommendations</h3>
+                    <div class="value" id="strongRecs">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Avg Absolute Edge</h3>
+                    <div class="value" id="avgEdge">-</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-wrapper">
+                    <h2 style="margin-bottom: 20px; color: #667eea;">Edge Distribution</h2>
+                    <canvas id="edgeChart"></canvas>
+                </div>
+                
+                <div class="chart-wrapper">
+                    <h2 style="margin-bottom: 20px; color: #667eea;">Recommendations Breakdown</h2>
+                    <canvas id="recChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="opportunities-section">
+                <h2>🔥 Top Opportunities</h2>
+                <div id="opportunitiesList"></div>
+            </div>
+        </div>
+        
+        <footer>
+            <p><strong>Disclaimer:</strong> This tool provides analysis only, not financial advice. Prediction markets involve real financial risk.</p>
+            <p style="margin-top: 10px;">Always conduct your own research before trading.</p>
+        </footer>
+    </div>
+    
+    <script>
+        let edgeChart = null;
+        let recChart = null;
+        
+        async function runAnalysis() {
+            const btn = document.getElementById('runAnalysisBtn');
+            const maxEvents = document.getElementById('maxEvents').value;
+            const minEdge = document.getElementById('minEdge').value;
+            
+            // Show loading
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'none';
+            btn.disabled = true;
+            
+            try {
+                console.log('Starting analysis...');
+                const response = await fetch(`/api/analyze?max_events=${maxEvents}&min_edge=${minEdge}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned non-JSON response. Check that serverless functions are deployed correctly.');
+                }
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || 'Analysis failed');
+                }
+                
+                if (!data.success) {
+                    throw new Error(data.message || data.error || 'Analysis returned unsuccessful status');
+                }
+                
+                displayResults(data);
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                let errorMsg = error.message;
+                
+                // Provide helpful error messages
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg = 'Unable to connect to the server. Please check that:\n' +
+                               '1. You are connected to the internet\n' +
+                               '2. The Netlify functions are deployed\n' +
+                               '3. Environment variables are configured';
+                } else if (error.message.includes('non-JSON')) {
+                    errorMsg = 'Server configuration error. Please verify:\n' +
+                               '1. Serverless functions are in netlify/functions/ folder\n' +
+                               '2. netlify.toml is configured correctly\n' +
+                               '3. Functions are deployed successfully';
+                }
+                
+                document.getElementById('errorMessage').innerHTML = errorMsg.replace(/\n/g, '<br>');
+                document.getElementById('errorSection').style.display = 'block';
+            } finally {
+                document.getElementById('loadingSection').style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+        
+        async function loadLatestResults() {
+            try {
+                console.log('Loading latest results...');
+                const response = await fetch('/api/get-results', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server returned non-JSON response. Check serverless function deployment.');
+                }
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.results && data.results.length > 0) {
+                    displayResults(data);
+                } else {
+                    // Show friendly message for first-time users
+                    document.getElementById('errorMessage').innerHTML = 
+                        '📊 <strong>Welcome!</strong><br><br>' +
+                        'No analysis results yet. Click the <strong>"Run New Analysis"</strong> button above to get started.<br><br>' +
+                        'The analysis will take 1-3 minutes to complete.';
+                    document.getElementById('errorSection').style.display = 'block';
+                    document.getElementById('errorSection').style.background = '#f0f9ff';
+                    document.getElementById('errorSection').querySelector('h3').textContent = 'ℹ️ Get Started';
+                }
+            } catch (error) {
+                console.error('Error loading results:', error);
+                let errorMsg = 'Failed to load results: ' + error.message;
+                
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg = 'Unable to connect to the server. The site may still be deploying. Please wait a minute and refresh.';
+                }
+                
+                document.getElementById('errorMessage').textContent = errorMsg;
+                document.getElementById('errorSection').style.display = 'block';
+            }
+        }
+        
+        function displayResults(data) {
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('errorSection').style.display = 'none';
+            
+            const results = data.results || [];
+            
+            // Update timestamp
+            const timestamp = new Date(data.generated_at).toLocaleString();
+            document.getElementById('timestamp').textContent = timestamp;
+            
+            // Update stats
+            document.getElementById('totalEvents').textContent = data.total_analyzed || 0;
+            document.getElementById('totalOpps').textContent = results.length;
+            
+            const strongRecs = results.filter(r => r.recommendation.includes('STRONG')).length;
+            document.getElementById('strongRecs').textContent = strongRecs;
+            
+            if (results.length > 0) {
+                const avgEdge = results.reduce((sum, r) => sum + Math.abs(r.edge), 0) / results.length;
+                document.getElementById('avgEdge').textContent = (avgEdge * 100).toFixed(1) + '%';
+            } else {
+                document.getElementById('avgEdge').textContent = 'N/A';
+            }
+            
+            // Update charts
+            updateCharts(results);
+            
+            // Display opportunities
+            displayOpportunities(results);
+        }
+        
+        function updateCharts(results) {
+            // Edge chart
+            const edgeCtx = document.getElementById('edgeChart').getContext('2d');
+            
+            if (edgeChart) {
+                edgeChart.destroy();
+            }
+            
+            edgeChart = new Chart(edgeCtx, {
+                type: 'bar',
+                data: {
+                    labels: results.slice(0, 10).map(r => r.ticker),
+                    datasets: [{
+                        label: 'Edge (%)',
+                        data: results.slice(0, 10).map(r => r.edge * 100),
+                        backgroundColor: results.slice(0, 10).map(r => 
+                            r.edge > 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)'
+                        ),
+                        borderColor: results.slice(0, 10).map(r => 
+                            r.edge > 0 ? 'rgb(16, 185, 129)' : 'rgb(239, 68, 68)'
+                        ),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Edge (%)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Recommendations chart
+            const recCounts = {};
+            results.forEach(r => {
+                recCounts[r.recommendation] = (recCounts[r.recommendation] || 0) + 1;
+            });
+            
+            const recCtx = document.getElementById('recChart').getContext('2d');
+            
+            if (recChart) {
+                recChart.destroy();
+            }
+            
+            recChart = new Chart(recCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(recCounts),
+                    datasets: [{
+                        data: Object.values(recCounts),
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(220, 38, 38, 0.8)',
+                            'rgba(107, 114, 128, 0.8)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function displayOpportunities(results) {
+            const list = document.getElementById('opportunitiesList');
+            list.innerHTML = '';
+            
+            results.slice(0, 10).forEach((result) => {
+                const card = document.createElement('div');
+                const cardClass = result.recommendation.toLowerCase().replace('_', '-');
+                card.className = `opportunity-card ${cardClass}`;
+                
+                card.innerHTML = `
+                    <span class="ticker">${result.ticker}</span>
+                    <span class="badge ${result.confidence.toLowerCase()}">${result.confidence}</span>
+                    <h3>${result.title}</h3>
+                    
+                    <div class="metrics-grid">
+                        <div class="metric">
+                            <div class="metric-label">Market Price</div>
+                            <div class="metric-value">${(result.market_price * 100).toFixed(1)}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Estimated Prob</div>
+                            <div class="metric-value">${(result.estimated_probability * 100).toFixed(1)}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Edge</div>
+                            <div class="metric-value" style="color: ${result.edge > 0 ? '#10b981' : '#ef4444'}">
+                                ${result.edge_percent}
+                            </div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Sources</div>
+                            <div class="metric-value">${result.sources_count || 0}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="recommendation ${cardClass}">${result.recommendation}</div>
+                    
+                    <div class="reasoning">
+                        <strong>Analysis:</strong> ${result.reasoning}
+                    </div>
+                `;
+                
+                list.appendChild(card);
+            });
+        }
+        
+        // Load latest results on page load
+        window.addEventListener('load', loadLatestResults);
+    </script>
+</body>
+</html>
